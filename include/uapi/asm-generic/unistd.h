@@ -693,8 +693,12 @@ __SYSCALL(__NR_kcmp, sys_kcmp)
 #define __NR_finit_module 273
 __SYSCALL(__NR_finit_module, sys_finit_module)
 
+/* Zad3 */
+#define __NR_addkey 274
+__SYSCALL(__NR_addkey, sys_addkey)
+
 #undef __NR_syscalls
-#define __NR_syscalls 274
+#define __NR_syscalls 275
 
 /*
  * All syscalls below here should go away really,
