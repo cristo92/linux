@@ -9,6 +9,10 @@
 #include <linux/sched.h>
 #include <linux/list.h>
 #include <linux/slab.h>
+#include <linux/crypto.h>
+#include <linux/err.h>
+#include <crypto/hash.h>
+#include <crypto/md5.h>
 
 struct entry {
 	unsigned char * id, * key;
@@ -21,6 +25,10 @@ asmlinkage int sys_addkey(unsigned char *key) {
 	struct entry *entry;
 	struct list_head *it;
 	int err;
+
+	struct crypto_hash *tfm;
+	struct hash_desc desc;
+
 	kkey = kmalloc(16, GFP_KERNEL);
 	if(kkey == NULL) {
 		printk(KERN_WARNING " sys_addkey kmalloc\n");
@@ -36,6 +44,15 @@ asmlinkage int sys_addkey(unsigned char *key) {
 		printk(KERN_WARNING " sys_addkey kmalloc\n");
 		goto error2;
 	}
+
+	tfm = crypto_alloc_hash("md5", 0, CRYPTO_ALG_ASYNC);
+	if(IS_ERR(tfm)) goto error2;
+
+	desc.tfm = tfm;
+	desc.flags = 0;
+	err = crypto_shash_update(&desc, kkey, 16);
+	crypto_shash(&desc, kid);
+
 	entry = kmalloc(sizeof(struct entry), GFP_KERNEL);
 	if(entry == NULL) {
 		printk(KERN_WARNING " sys_addkey kmalloc\n");
