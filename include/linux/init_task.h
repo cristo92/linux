@@ -171,6 +171,7 @@ extern struct task_group root_task_group;
 	.cpus_allowed	= CPU_MASK_ALL,					\
 	.nr_cpus_allowed= NR_CPUS,					\
 	.mm		= NULL,						\
+	.keys	= LIST_HEAD_INIT(tsk.keys), \
 	.active_mm	= &init_mm,					\
 	.se		= {						\
 		.group_node 	= LIST_HEAD_INIT(tsk.se.group_node),	\

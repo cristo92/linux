@@ -1,8 +1,9 @@
 #ifndef _LINUX_ADDKEY_H
 #define _LINUX_ADDKEY_H
 
-#include <linux/unistd.h>
-#define __NR_addkey 274
-_syscall1(long, addkey, unsigned char*, key);
+struct key_entry {
+	unsigned char id[16], key[16];
+	struct list_head list;
+};
 
 #endif

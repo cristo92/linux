@@ -71,6 +71,7 @@
 #include <linux/signalfd.h>
 #include <linux/uprobes.h>
 #include <linux/aio.h>
+#include <linux/addkey.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -198,6 +199,17 @@ struct kmem_cache *vm_area_cachep;
 /* SLAB cache for mm_struct structures (tsk->mm) */
 static struct kmem_cache *mm_cachep;
 
+/* ZSO - Zad3 */
+static void free_task_keys(struct task_struct *tsk) {
+	struct list_head *it, *temp;
+	struct key_entry *entry;
+
+	list_for_each_safe(it, temp, &tsk->keys) {
+		entry = list_entry(it, struct key_entry, list);
+		kfree(entry);
+	}
+}
+
 static void account_kernel_stack(struct thread_info *ti, int account)
 {
 	struct zone *zone = page_zone(virt_to_page(ti));
@@ -214,6 +226,7 @@ void free_task(struct task_struct *tsk)
 	ftrace_graph_exit_task(tsk);
 	put_seccomp_filter(tsk);
 	arch_release_task_struct(tsk);
+	free_task_keys(tsk);
 	free_task_struct(tsk);
 }
 EXPORT_SYMBOL(free_task);
@@ -988,6 +1001,25 @@ static int copy_sighand(unsigned long clone_flags, struct task_struct *tsk)
 	return 0;
 }
 
+static int copy_keys(unsigned long clone_flags, struct task_struct *tsk) {
+	struct list_head *it;
+	struct key_entry *entry, *old;
+	INIT_LIST_HEAD(&tsk->keys);
+	list_for_each(it, &current->keys) {
+		entry = kmalloc(sizeof(struct key_entry), GFP_KERNEL);
+		if(entry == NULL) return -ENOMEM;
+		old = list_entry(it, struct key_entry, list);
+		memcpy((void*)entry->key, (void*)old->key, 16);
+		memcpy((void*)entry->id, (void*)old->id, 16);
+		list_add(&entry->list, &tsk->keys);
+	}
+
+	return 0;
+	//TODO clear memory on error
+}
+
+//TODO wywalanie keys z pamieci
+
 void __cleanup_sighand(struct sighand_struct *sighand)
 {
 	if (atomic_dec_and_test(&sighand->count)) {
@@ -1226,6 +1258,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	copy_flags(clone_flags, p);
 	INIT_LIST_HEAD(&p->children);
 	INIT_LIST_HEAD(&p->sibling);
+	//INIT_LIST_HEAD(lista kluczy)
 	rcu_copy_process(p);
 	p->vfork_done = NULL;
 	spin_lock_init(&p->alloc_lock);
@@ -1345,6 +1378,9 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 		goto bad_fork_cleanup_namespaces;
 	retval = copy_thread(clone_flags, stack_start, stack_size, p);
 	if (retval)
+		goto bad_fork_cleanup_io;
+	retval = copy_keys(clone_flags, p);
+	if(retval)
 		goto bad_fork_cleanup_io;
 
 	if (pid != &init_struct_pid) {

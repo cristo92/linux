@@ -2939,7 +2939,7 @@ static int ext4_readpage(struct file *file, struct page *page)
 		ret = ext4_readpage_inline(inode, page);
 
 	if (ret == -EAGAIN)
-		return mpage_readpage(page, ext4_get_block);
+		ret = mpage_readpage(page, ext4_get_block);
 
 	return ret;
 }
@@ -2949,12 +2949,15 @@ ext4_readpages(struct file *file, struct address_space *mapping,
 		struct list_head *pages, unsigned nr_pages)
 {
 	struct inode *inode = mapping->host;
+	int ret;
 
 	/* If the file has inline data, no need to do readpages. */
 	if (ext4_has_inline_data(inode))
 		return 0;
 
-	return mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
+	ret = mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
+
+	return ret;
 }
 
 static void ext4_invalidatepage(struct page *page, unsigned int offset,

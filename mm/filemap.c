@@ -1303,6 +1303,7 @@ no_cached_page:
 			desc->error = error;
 			goto out;
 		}
+
 		goto readpage;
 	}
 
@@ -1411,6 +1412,7 @@ generic_file_aio_read(struct kiocb *iocb, const struct iovec *iov,
 	unsigned long seg = 0;
 	size_t count;
 	loff_t *ppos = &iocb->ki_pos;
+
 
 	count = 0;
 	retval = generic_segment_checks(iov, &nr_segs, &count, VERIFY_WRITE);
