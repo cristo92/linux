@@ -18,6 +18,7 @@
 #include <asm/uaccess.h>
 #include "ext4_jbd2.h"
 #include "ext4.h"
+#include "xattr.h"
 
 #define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
 
@@ -219,15 +220,37 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct inode *inode = file_inode(filp);
 	struct super_block *sb = inode->i_sb;
 	struct ext4_inode_info *ei = EXT4_I(inode);
-	struct ext4_ioctl_encrypt *key;
-	unsigned int flags;
+	struct ext4_ioctl_encrypt key;
+	unsigned char bufkey[CRYPT_BLOCK_SIZE], hexkey[CRYPT_BLOCK_SIZE * 2];
+	unsigned int flags, err;
 
 	ext4_debug("cmd = %u, arg = %lu\n", cmd, arg);
 
 	switch (cmd) {
 	case EXT4_ENCRYPT:
-		key = (struct ext4_ioctl_encrypt *)arg;
-		printk(KERN_WARNING "IOCTL %s\n", key->key_id);
+		if(inode->i_size > 0) return -EINVAL;
+		printk(KERN_WARNING "EXT4_ENCRYPT %u %u\n", inode->i_size, inode->i_bytes);
+		err = copy_from_user((void *)&key, (void __user *)arg, 
+			sizeof(struct ext4_ioctl_encrypt));
+		if(err != 0) printk(KERN_WARNING "ext4 copy_from_user\n");
+		err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME,
+			bufkey, CRYPT_BLOCK_SIZE);
+		//filecrypt_bin2hex(bufkey, hexkey, CRYPT_BLOCK_SIZE);
+		if(err == -ENODATA) {
+			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME, 
+				(void*)key.key_id, CRYPT_BLOCK_SIZE, XATTR_CREATE);
+			if(err < 0) {
+				printk(KERN_WARNING "ext4_xattr_set\n"); 
+				return err;
+			}
+		} else {
+			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME,
+				(void*)key.key_id, CRYPT_BLOCK_SIZE, XATTR_REPLACE);
+			if(err < 0) {
+				printk(KERN_WARNING "ext4_xattr_set\n"); 
+				return err;
+			}
+		}
 		return 0;
 	case EXT4_IOC_GETFLAGS:
 		ext4_get_inode_flags(ei);

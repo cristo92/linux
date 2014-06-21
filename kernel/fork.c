@@ -71,7 +71,7 @@
 #include <linux/signalfd.h>
 #include <linux/uprobes.h>
 #include <linux/aio.h>
-#include <linux/addkey.h>
+#include <linux/filecrypt.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
