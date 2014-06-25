@@ -28,6 +28,7 @@
 #include <linux/backing-dev.h>
 #include <linux/pagevec.h>
 #include <linux/cleancache.h>
+#include <linux/filecrypt.h>
 
 /*
  * I/O completion handler for multipage BIOs.
@@ -47,8 +48,6 @@ static void mpage_end_io(struct bio *bio, int err)
 	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
 	struct file_system_type *fsys;
 
-	printk(KERN_WARNING "mpage_end_io\n");
-
 	do {
 		struct page *page = bvec->bv_page;
 
@@ -62,10 +61,12 @@ static void mpage_end_io(struct bio *bio, int err)
 				SetPageError(page);
 			}
 			/* ZSO Zad3 */
+			/* Wychodzi chyba na to, ze wypisywanie fsys->name wywala system */
 			fsys = page->mapping->host->i_sb->s_type;
-			printk(KERN_WARNING "FILE_SYSTEM %s\n", fsys->name);
 			if(memcmp(fsys->name, "ext4", 4) == 0) {
-					printk(KERN_WARNING "Page: %s\n", page_address(page));
+//				if(filecrypt_is_encrypted(page->mapping->host)) ;
+//					printk(KERN_EMERG "mpage_end_io\n");
+//					printk(KERN_WARNING "Page: %s\n", page_address(page));
 			}
 			unlock_page(page);
 		} else { /* bio_data_dir(bio) == WRITE */

@@ -230,7 +230,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 	struct ext4_ioctl_encrypt key;
 	int err;
 
-	err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME,
+	err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME,
 		(void*)key.key_id, CRYPT_BLOCK_SIZE);
 	if(err != -ENODATA) {
 		if(err < 0)

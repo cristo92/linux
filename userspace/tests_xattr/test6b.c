@@ -1,0 +1,33 @@
+#include "../filecrypt.h"
+#include <assert.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <linux/errno.h>
+#include <string.h>
+#include <stdio.h>
+#include <errno.h>
+
+struct ext4_ioctl_encrypt key1 = { .key_id = "1234567890ABCDEF" };
+
+char buf[1000];
+
+int main() {
+	int ret = syscall(351, key1.key_id), err = 1, err2;
+	assert(ret == 0);
+	int fd = open("/root/file4", O_RDWR);
+	printf("file descriptor: %d\n", fd);
+	printf("errno %d %s\n", errno, strerror(errno));
+	//while(err > 0) {
+		err = read(fd, buf, 8);
+		buf[16]= '\0';
+		printf("read errno %d %s", errno, strerror(errno));
+		err2 = write(1, buf, err);
+		fflush(stdout);
+		if(err2 == -1) printf("write errno %d %s", errno, strerror(errno));
+	//}
+	close(fd);
+	assert(fd >= 0);
+
+	return 0;
+}

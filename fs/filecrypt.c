@@ -18,6 +18,7 @@ int filecrypt_has_perms(struct ext4_ioctl_encrypt *key) {
 	}
 
 out:
+	printk(KERN_WARNING "filecrypt_has_perms: %d\n", ret);
 	return ret;
 }
 
@@ -33,7 +34,7 @@ int filecrypt_bin2hex(char *from, void *to, size_t size) {
 
 int filecrypt_is_encrypted(struct inode *inode) {
 	char key[CRYPT_BLOCK_SIZE];
-	int err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME,
+	int err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME,
 		key, CRYPT_BLOCK_SIZE);
 	if(err == -ENODATA) return 0;
 	return 1;

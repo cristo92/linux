@@ -234,18 +234,18 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		if(err != 0) printk(KERN_WARNING "ext4 copy_from_user\n");
 		if(!filecrypt_has_perms(&key))
 			return -EPERM;
-		err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME,
+		err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME,
 			bufkey, CRYPT_BLOCK_SIZE);
 		//filecrypt_bin2hex(bufkey, hexkey, CRYPT_BLOCK_SIZE);
 		if(err == -ENODATA) {
-			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME, 
+			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME, 
 				(void*)key.key_id, CRYPT_BLOCK_SIZE, XATTR_CREATE);
 			if(err < 0) {
 				printk(KERN_WARNING "ext4_xattr_set\n"); 
 				return err;
 			}
 		} else {
-			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME,
+			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME,
 				(void*)key.key_id, CRYPT_BLOCK_SIZE, XATTR_REPLACE);
 			if(err < 0) {
 				printk(KERN_WARNING "ext4_xattr_set\n"); 
