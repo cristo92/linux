@@ -7,6 +7,7 @@
 */
 
 #include <linux/xattr.h>
+#include "ext4.h"
 
 /* Magic value in attribute blocks */
 #define EXT4_XATTR_MAGIC		0xEA020000

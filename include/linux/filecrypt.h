@@ -3,6 +3,7 @@
 
 #ifdef __KERNEL__
 #include <linux/kernel.h>
+#include <linux/fs.h>
 #else
 #include <stdint.h>
 #endif
@@ -28,6 +29,8 @@ struct key_entry {
 
 int filecrypt_has_perms(struct ext4_ioctl_encrypt *key);
 int filecrypt_bin2hex(char* from, void* to, size_t size);
+int filecrypt_is_encrypted(struct inode *inode);
+void filecrypt_encrypt(char *page);
 #endif
 
 #endif

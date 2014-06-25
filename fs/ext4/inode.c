@@ -38,6 +38,7 @@
 #include <linux/slab.h>
 #include <linux/ratelimit.h>
 #include <linux/aio.h>
+#include <linux/filecrypt.h>
 
 #include "ext4_jbd2.h"
 #include "xattr.h"
@@ -1842,6 +1843,9 @@ static int ext4_writepage(struct page *page,
 	struct buffer_head *page_bufs = NULL;
 	struct inode *inode = page->mapping->host;
 	struct ext4_io_submit io_submit;
+	int is_encrypted;
+
+	is_encrypted = filecrypt_is_encrypted(inode);
 
 	trace_ext4_writepage(page);
 	size = i_size_read(inode);
@@ -1873,6 +1877,8 @@ static int ext4_writepage(struct page *page,
 			return 0;
 		}
 	}
+
+	if(is_encrypted) filecrypt_encrypt(page_address(page));
 
 	if (PageChecked(page) && ext4_should_journal_data(inode))
 		/*
@@ -2306,6 +2312,8 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
 	int blkbits = mpd->inode->i_blkbits;
 	ext4_lblk_t lblk;
 	struct buffer_head *head;
+	/* TODO Catch errors */
+	int is_encrypted = filecrypt_is_encrypted(mpd->inode);
 
 	if (mpd->wbc->sync_mode == WB_SYNC_ALL || mpd->wbc->tagged_writepages)
 		tag = PAGECACHE_TAG_TOWRITE;
@@ -2323,7 +2331,10 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
 
 		for (i = 0; i < nr_pages; i++) {
 			struct page *page = pvec.pages[i];
-
+			if(is_encrypted) {
+				filecrypt_encrypt(page_address(page));
+			}
+			
 			/*
 			 * At this point, the page may be truncated or
 			 * invalidated (changing page->mapping to NULL), or

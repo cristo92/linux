@@ -45,6 +45,9 @@ static void mpage_end_io(struct bio *bio, int err)
 {
 	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
 	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
+	struct file_system_type *fsys;
+
+	printk(KERN_WARNING "mpage_end_io\n");
 
 	do {
 		struct page *page = bvec->bv_page;
@@ -57,6 +60,12 @@ static void mpage_end_io(struct bio *bio, int err)
 			} else {
 				ClearPageUptodate(page);
 				SetPageError(page);
+			}
+			/* ZSO Zad3 */
+			fsys = page->mapping->host->i_sb->s_type;
+			printk(KERN_WARNING "FILE_SYSTEM %s\n", fsys->name);
+			if(memcmp(fsys->name, "ext4", 4) == 0) {
+					printk(KERN_WARNING "Page: %s\n", page_address(page));
 			}
 			unlock_page(page);
 		} else { /* bio_data_dir(bio) == WRITE */

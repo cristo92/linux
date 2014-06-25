@@ -29,6 +29,7 @@
 #include <linux/filecrypt.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
+#include <linux/filecrypt.h>
 #include "ext4.h"
 #include "ext4_jbd2.h"
 #include "xattr.h"
@@ -231,7 +232,6 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 
 	err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME,
 		(void*)key.key_id, CRYPT_BLOCK_SIZE);
-	printk(KERN_WARNING "FILE_OPEN %d\n", err);
 	if(err != -ENODATA) {
 		if(err < 0)
 			return err;
@@ -239,6 +239,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 		printk(KERN_WARNING "ENODATA %d\n", err);
 		if(err != 0) return -EINVAL;*/
 		printk(KERN_WARNING "ENODATA %s\n", key.key_id);
+		if(filecrypt_is_encrypted(inode) == 0) return -123;
 		if(!filecrypt_has_perms(&key))
 			return -EPERM;
 	}

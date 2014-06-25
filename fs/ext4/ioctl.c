@@ -229,10 +229,11 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case EXT4_ENCRYPT:
 		if(inode->i_size > 0) return -EINVAL;
-		printk(KERN_WARNING "EXT4_ENCRYPT %u %u\n", inode->i_size, inode->i_bytes);
 		err = copy_from_user((void *)&key, (void __user *)arg, 
 			sizeof(struct ext4_ioctl_encrypt));
 		if(err != 0) printk(KERN_WARNING "ext4 copy_from_user\n");
+		if(!filecrypt_has_perms(&key))
+			return -EPERM;
 		err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_SECURITY, XATTR_NAME,
 			bufkey, CRYPT_BLOCK_SIZE);
 		//filecrypt_bin2hex(bufkey, hexkey, CRYPT_BLOCK_SIZE);
