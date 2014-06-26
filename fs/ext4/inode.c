@@ -39,6 +39,9 @@
 #include <linux/ratelimit.h>
 #include <linux/aio.h>
 #include <linux/filecrypt.h>
+#include <linux/mm.h>
+#include <linux/errno.h>
+
 
 #include "ext4_jbd2.h"
 #include "xattr.h"
@@ -2939,6 +2942,63 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
 	return generic_block_bmap(mapping, block, ext4_get_block);
 }
 
+/*
+ * Callback which is ran when I/O is finished 
+ */
+static void ext4_mpage_end_io(struct bio *bio, int err)
+{
+	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
+	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
+	struct file_system_type *fsys;
+
+	do {
+		struct page *page = bvec->bv_page;
+
+		if (--bvec >= bio->bi_io_vec)
+			prefetchw(&bvec->bv_page->flags);
+		if (bio_data_dir(bio) == READ) {
+			fsys = page->mapping->host->i_sb->s_type;
+			if (uptodate) {
+				if(memcmp(fsys->name, "ext4", 4) == 0) {
+					if(IS_ENCRYPTED(page->mapping->host)) {
+						printk(KERN_WARNING "page jest uptodate\n");
+					}
+				}
+				SetPageUptodate(page);
+			} else {
+				if(memcmp(fsys->name, "ext4", 4) == 0) {
+					if(IS_ENCRYPTED(page->mapping->host)) {
+						printk(KERN_WARNING "page rzuca blad braku strony\n");
+					}
+				}
+				ClearPageUptodate(page);
+				SetPageError(page);
+			}
+			unlock_page(page);
+			/* ZSO Zad3 */
+			/* Wychodzi chyba na to, ze proba dobrania sie do xattr w inode
+			 * wywala jadro */
+			if(memcmp(fsys->name, "ext4", 4) == 0) {
+				if(IS_ENCRYPTED(page->mapping->host)) {
+					if(page == NULL) 
+						printk(KERN_WARNING "page jest null\n");
+					printk(KERN_WARNING "page_address : 0x%x\n", page_address(page));
+					printk(KERN_WARNING "Inode nr: %d\n",page->mapping->host->i_ino);
+					printk(KERN_WARNING "Page: %s\n", page_address(page));
+				}
+			}
+		} else { /* bio_data_dir(bio) == WRITE */
+			if (!uptodate) {
+				SetPageError(page);
+				if (page->mapping)
+					set_bit(AS_EIO, &page->mapping->flags);
+			}
+			end_page_writeback(page);
+		}
+	} while (bvec >= bio->bi_io_vec);
+	bio_put(bio); 
+}
+
 static int ext4_readpage(struct file *file, struct page *page)
 {
 	int ret = -EAGAIN;
@@ -2966,7 +3026,8 @@ ext4_readpages(struct file *file, struct address_space *mapping,
 	if (ext4_has_inline_data(inode))
 		return 0;
 
-	ret = mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
+	ret = mpage_readpages_with_cb(mapping, pages, nr_pages, 
+					ext4_get_block, ext4_mpage_end_io);
 
 	return ret;
 }

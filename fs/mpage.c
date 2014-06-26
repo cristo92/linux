@@ -46,7 +46,6 @@ static void mpage_end_io(struct bio *bio, int err)
 {
 	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
 	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
-	struct file_system_type *fsys;
 
 	do {
 		struct page *page = bvec->bv_page;
@@ -60,14 +59,6 @@ static void mpage_end_io(struct bio *bio, int err)
 				ClearPageUptodate(page);
 				SetPageError(page);
 			}
-			/* ZSO Zad3 */
-			/* Wychodzi chyba na to, ze proba dobrania sie do xattr w inode
-			 * wywala jadro */
-			fsys = page->mapping->host->i_sb->s_type;
-			if(memcmp(fsys->name, "ext4", 4) == 0) {
-				if(IS_ENCRYPTED(page->mapping->host))
-					printk(KERN_WARNING "Page: %s\n", page_address(page));
-			}
 			unlock_page(page);
 		} else { /* bio_data_dir(bio) == WRITE */
 			if (!uptodate) {
@@ -78,12 +69,12 @@ static void mpage_end_io(struct bio *bio, int err)
 			end_page_writeback(page);
 		}
 	} while (bvec >= bio->bi_io_vec);
-	bio_put(bio);
+	bio_put(bio); 
 }
 
 static struct bio *mpage_bio_submit(int rw, struct bio *bio)
 {
-	bio->bi_end_io = mpage_end_io;
+	//bio->bi_end_io = mpage_end_io;
 	submit_bio(rw, bio);
 	return NULL;
 }
@@ -162,9 +153,10 @@ map_buffer_to_page(struct page *page, struct buffer_head *bh, int page_block)
  * get_block() call.
  */
 static struct bio *
-do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
+do_mpage_readpage_with_cb(struct bio *bio, struct page *page, unsigned nr_pages,
 		sector_t *last_block_in_bio, struct buffer_head *map_bh,
-		unsigned long *first_logical_block, get_block_t get_block)
+		unsigned long *first_logical_block, get_block_t get_block,
+		void (*cb)(struct bio*, int))
 {
 	struct inode *inode = page->mapping->host;
 	const unsigned blkbits = inode->i_blkbits;
@@ -301,6 +293,7 @@ alloc_new:
 				GFP_KERNEL);
 		if (bio == NULL)
 			goto confused;
+		bio->bi_end_io = cb;
 	}
 
 	length = first_hole << blkbits;
@@ -327,6 +320,14 @@ confused:
 	else
 		unlock_page(page);
 	goto out;
+}
+
+static struct bio *
+do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
+		sector_t *last_block_in_bio, struct buffer_head *map_bh,
+		unsigned long *first_logical_block, get_block_t get_block) {
+	return do_mpage_readpage_with_cb(bio, page, nr_pages, 
+		last_block_in_bio, map_bh, first_logical_block, get_block, mpage_end_io);
 }
 
 /**
@@ -373,8 +374,8 @@ confused:
  * This all causes the disk requests to be issued in the correct order.
  */
 int
-mpage_readpages(struct address_space *mapping, struct list_head *pages,
-				unsigned nr_pages, get_block_t get_block)
+mpage_readpages_with_cb(struct address_space *mapping, struct list_head *pages,
+			unsigned nr_pages, get_block_t get_block, void (*cb)(struct bio*, int))
 {
 	struct bio *bio = NULL;
 	unsigned page_idx;
@@ -391,11 +392,11 @@ mpage_readpages(struct address_space *mapping, struct list_head *pages,
 		list_del(&page->lru);
 		if (!add_to_page_cache_lru(page, mapping,
 					page->index, GFP_KERNEL)) {
-			bio = do_mpage_readpage(bio, page,
+			bio = do_mpage_readpage_with_cb(bio, page,
 					nr_pages - page_idx,
 					&last_block_in_bio, &map_bh,
 					&first_logical_block,
-					get_block);
+					get_block, cb);
 		}
 		page_cache_release(page);
 	}
@@ -405,6 +406,13 @@ mpage_readpages(struct address_space *mapping, struct list_head *pages,
 	return 0;
 }
 EXPORT_SYMBOL(mpage_readpages);
+
+int
+mpage_readpages(struct address_space *mapping, struct list_head *pages,
+				unsigned nr_pages, get_block_t get_block) {
+	return mpage_readpages_with_cb(mapping, pages, nr_pages, get_block, 
+				mpage_end_io);
+}
 
 /*
  * This isn't called much at all

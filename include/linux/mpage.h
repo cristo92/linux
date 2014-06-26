@@ -14,8 +14,12 @@
 struct writeback_control;
 
 int mpage_readpages(struct address_space *mapping, struct list_head *pages,
-				unsigned nr_pages, get_block_t get_block);
+		unsigned nr_pages, get_block_t get_block);
+int mpage_readpages_with_cb(struct address_space *mapping, struct list_head *pages,
+		unsigned nr_pages, get_block_t get_block, void (*)(struct bio*, int));
 int mpage_readpage(struct page *page, get_block_t get_block);
+int mpage_readpage_with_cb(struct page *page, get_block_t get_block, 
+		void (*)(struct bio*, int));
 int mpage_writepages(struct address_space *mapping,
 		struct writeback_control *wbc, get_block_t get_block);
 int mpage_writepage(struct page *page, get_block_t *get_block,
