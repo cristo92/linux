@@ -252,6 +252,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				return err;
 			}
 		}
+		inode->i_flags |= S_ENCRYPTED;
 		return 0;
 	case EXT4_IOC_GETFLAGS:
 		ext4_get_inode_flags(ei);

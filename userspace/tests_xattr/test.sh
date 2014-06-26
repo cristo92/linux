@@ -51,3 +51,13 @@ printf "Test5: "
 check_ret
 ./test5
 check_ret
+
+# Test6
+# Test na read pliku 16B (jedna strona)
+./test6b
+check_ret
+
+# Test7
+# Test na read pliku 16kB (wiele stron)
+./test7b
+check_ret

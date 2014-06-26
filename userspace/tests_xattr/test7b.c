@@ -13,19 +13,19 @@ struct ext4_ioctl_encrypt key1 = { .key_id = "1234567890ABCDEF" };
 char buf[1000];
 
 int main() {
-	int ret = syscall(351, key1.key_id), err = 1, err2, i = 0;
+	int ret = syscall(351, key1.key_id), err = 1, err2, i;
 	assert(ret == 0);
-	int fd = open("/root/file4", O_RDWR);
+	int fd = open("/root/file5", O_RDWR);
 	printf("file descriptor: %d\n", fd);
 	printf("errno %d %s\n", errno, strerror(errno));
-	for(i = 0; i < 1; i++) {
+	for(i = 0; i < 1000; i++) {
 		err = read(fd, buf, 16);
-		buf[16]= '\n';
-		printf("read errno %d %s", errno, strerror(errno));
 		assert(err == 16);
-		err2 = write(1, buf, err + 1);
-		if(err2 == -1) printf("write errno %d %s", errno, strerror(errno));
-		assert(err2 == 17);
+		buf[err]= '\n';
+		//printf("read errno %d %s", errno, strerror(errno));
+		//err2 = write(1, buf, err + 1);
+		//if(err2 == -1) printf("write errno %d %s", errno, strerror(errno));
+		//assert(err2 == 17);
 	}
 	close(fd);
 	assert(fd >= 0);

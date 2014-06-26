@@ -61,12 +61,12 @@ static void mpage_end_io(struct bio *bio, int err)
 				SetPageError(page);
 			}
 			/* ZSO Zad3 */
-			/* Wychodzi chyba na to, ze wypisywanie fsys->name wywala system */
+			/* Wychodzi chyba na to, ze proba dobrania sie do xattr w inode
+			 * wywala jadro */
 			fsys = page->mapping->host->i_sb->s_type;
 			if(memcmp(fsys->name, "ext4", 4) == 0) {
-//				if(filecrypt_is_encrypted(page->mapping->host)) ;
-//					printk(KERN_EMERG "mpage_end_io\n");
-//					printk(KERN_WARNING "Page: %s\n", page_address(page));
+				if(IS_ENCRYPTED(page->mapping->host))
+					printk(KERN_WARNING "Page: %s\n", page_address(page));
 			}
 			unlock_page(page);
 		} else { /* bio_data_dir(bio) == WRITE */

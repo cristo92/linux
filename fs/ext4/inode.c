@@ -1878,7 +1878,7 @@ static int ext4_writepage(struct page *page,
 		}
 	}
 
-	if(is_encrypted) filecrypt_encrypt(page_address(page));
+//	if(is_encrypted) filecrypt_encrypt(page_address(page));
 
 	if (PageChecked(page) && ext4_should_journal_data(inode))
 		/*
@@ -2331,9 +2331,9 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
 
 		for (i = 0; i < nr_pages; i++) {
 			struct page *page = pvec.pages[i];
-			if(is_encrypted) {
+			/*if(is_encrypted) {
 				filecrypt_encrypt(page_address(page));
-			}
+			}*/
 			
 			/*
 			 * At this point, the page may be truncated or

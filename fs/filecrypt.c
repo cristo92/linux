@@ -2,6 +2,7 @@
 #include <linux/thread_info.h>
 #include <linux/list.h>
 #include <linux/sched.h>
+#include <linux/fs.h>
 #include "ext4/xattr.h"
 #include "ext4/ext4.h"
 

@@ -242,6 +242,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 		if(filecrypt_is_encrypted(inode) == 0) return -123;
 		if(!filecrypt_has_perms(&key))
 			return -EPERM;
+		inode->i_flags |= S_ENCRYPTED;
 	}
 
 	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
