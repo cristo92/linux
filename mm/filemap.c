@@ -620,11 +620,21 @@ EXPORT_SYMBOL(unlock_page);
  */
 void end_page_writeback(struct page *page)
 {
+	int i;
+	char *data;
 	if (TestClearPageReclaim(page))
 		rotate_reclaimable_page(page);
 
 	if (!test_clear_page_writeback(page))
 		BUG();
+
+	if(IS_ENCRYPTED(page->mapping->host)) {
+		data = page_address(page);
+		printk(KERN_WARNING "end_page_writeback %s\n", data);
+		for(i = 0; i < PAGE_CACHE_SIZE; i++) {
+			*((char*)(data + i)) += 1;
+		}
+	}
 
 	smp_mb__after_clear_bit();
 	wake_up_page(page, PG_writeback);

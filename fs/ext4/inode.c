@@ -2950,27 +2950,26 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
 	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
 	struct file_system_type *fsys;
+	struct inode *inode;
+	int i;
+	unsigned blocksize;
+	unsigned blocks_per_page;
+	char *data;
 
 	do {
 		struct page *page = bvec->bv_page;
 
+		inode = page->mapping->host;
+		blocksize = 1 << inode->i_blkbits;
+		blocks_per_page = PAGE_CACHE_SIZE >> inode->i_blkbits;
+
 		if (--bvec >= bio->bi_io_vec)
 			prefetchw(&bvec->bv_page->flags);
 		if (bio_data_dir(bio) == READ) {
-			fsys = page->mapping->host->i_sb->s_type;
+			fsys = inode->i_sb->s_type;
 			if (uptodate) {
-				if(memcmp(fsys->name, "ext4", 4) == 0) {
-					if(IS_ENCRYPTED(page->mapping->host)) {
-						printk(KERN_WARNING "page jest uptodate\n");
-					}
-				}
 				SetPageUptodate(page);
 			} else {
-				if(memcmp(fsys->name, "ext4", 4) == 0) {
-					if(IS_ENCRYPTED(page->mapping->host)) {
-						printk(KERN_WARNING "page rzuca blad braku strony\n");
-					}
-				}
 				ClearPageUptodate(page);
 				SetPageError(page);
 			}
@@ -2979,12 +2978,26 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 			/* Wychodzi chyba na to, ze proba dobrania sie do xattr w inode
 			 * wywala jadro */
 			if(memcmp(fsys->name, "ext4", 4) == 0) {
-				if(IS_ENCRYPTED(page->mapping->host)) {
-					if(page == NULL) 
+				if(IS_ENCRYPTED(inode)) {
+					if(page_address(page) == NULL) {
 						printk(KERN_WARNING "page jest null\n");
-					printk(KERN_WARNING "page_address : 0x%x\n", page_address(page));
+						kmap(page);
+					}
+					data = page_address(page);
+					printk(KERN_WARNING "page_address : 0x%x\n", data);
 					printk(KERN_WARNING "Inode nr: %d\n",page->mapping->host->i_ino);
-					printk(KERN_WARNING "Page: %s\n", page_address(page));
+					printk(KERN_WARNING "Page: %s\n", data);
+					printk(KERN_WARNING "Offset: %d\n", page->index);
+					printk(KERN_WARNING "Page size: %d Block size: %d\n", 
+							PAGE_CACHE_SIZE, blocksize);
+
+					for(i = 0; i < PAGE_CACHE_SIZE; i++) 
+						*((char*)(data + i)) += 1;
+					
+					/*for(i = 0; i < blocks_per_page; i++) {
+						printk(KERN_WARNING "Block %d: %s\n", i, 
+								page_address(page) + (i * blocksize));
+					}*/
 				}
 			}
 		} else { /* bio_data_dir(bio) == WRITE */

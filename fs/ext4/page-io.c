@@ -406,7 +406,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 	unsigned block_start, blocksize;
 	struct buffer_head *bh, *head;
 	int ret = 0;
-	int nr_submitted = 0;
+	int nr_submitted = 0, i;
 
 	blocksize = 1 << inode->i_blkbits;
 
@@ -416,6 +416,12 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 	set_page_writeback(page);
 	ClearPageError(page);
 
+	if(IS_ENCRYPTED(inode)) {
+		printk(KERN_WARNING "ext4_bio_write_page: %s\n", page_address(page));
+		for(i = 0; i < PAGE_CACHE_SIZE; i++) {
+			*((char*)(page_address(page))+i) -= 1;
+		}
+	}
 	/*
 	 * In the first loop we prepare and mark buffers to submit. We have to
 	 * mark all buffers in the page before submitting so that

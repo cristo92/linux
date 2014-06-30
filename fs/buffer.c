@@ -177,7 +177,6 @@ static void __end_buffer_read_notouch(struct buffer_head *bh, int uptodate)
  */
 void end_buffer_read_sync(struct buffer_head *bh, int uptodate)
 {
-	printk(KERN_WARNING "END BUFFER IO %d 0x%x\n", bh->b_blocknr, (unsigned int)page_address(bh->b_page));//, ((unsigned int)page_address(bh->b_page)) + (unsigned int)bh->b_data);
 	__end_buffer_read_notouch(bh, uptodate);
 	put_bh(bh);
 }
