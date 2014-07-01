@@ -11,21 +11,18 @@
 struct ext4_ioctl_encrypt key1 = { .key_id = "1234567890ABCDEF" };
 
 int main() {
-	int fd = creat("/root/file5", S_IRWXU), i, err;
-	if(fd < 0) printf("FAIL: creat\n");
 	int ret = syscall(351, key1.key_id);
 	printf("syscall %d %s\n", ret, strerror(ret));
 	assert(ret == 0);
-	ret = ioctl(fd, EXT4_ENCRYPT, &key1);
-	if(ret != 0) printf("ioctl errno %d %s\n", errno, strerror(errno));
-	assert(ret == 0);
-	for(i = 0; i < 1000; i++) {
+	int fd = open("/root/file4", O_WRONLY | O_APPEND), i, err;
+	if(fd < 0) printf("FAIL: open\n");
+	assert(fd >= 0);
+	for(i = 0; i < 1; i++) {
 		err = write(fd, key1.key_id, 16);
 		if(err != 16) printf("write error! %d\n", err);
 		assert(err == 16);
 	}
 	close(fd);
-	assert(ret == 0);
 
 	return 0;
 }

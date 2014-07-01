@@ -41,6 +41,7 @@
 #include <linux/filecrypt.h>
 #include <linux/mm.h>
 #include <linux/errno.h>
+#include <linux/scatterlist.h>
 
 
 #include "ext4_jbd2.h"
@@ -1881,8 +1882,6 @@ static int ext4_writepage(struct page *page,
 		}
 	}
 
-//	if(is_encrypted) filecrypt_encrypt(page_address(page));
-
 	if (PageChecked(page) && ext4_should_journal_data(inode))
 		/*
 		 * It's mmapped pagecache.  Add buffers and journal it.  There
@@ -2315,8 +2314,6 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
 	int blkbits = mpd->inode->i_blkbits;
 	ext4_lblk_t lblk;
 	struct buffer_head *head;
-	/* TODO Catch errors */
-	int is_encrypted = filecrypt_is_encrypted(mpd->inode);
 
 	if (mpd->wbc->sync_mode == WB_SYNC_ALL || mpd->wbc->tagged_writepages)
 		tag = PAGECACHE_TAG_TOWRITE;
@@ -2334,9 +2331,6 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
 
 		for (i = 0; i < nr_pages; i++) {
 			struct page *page = pvec.pages[i];
-			/*if(is_encrypted) {
-				filecrypt_encrypt(page_address(page));
-			}*/
 			
 			/*
 			 * At this point, the page may be truncated or
@@ -2951,7 +2945,7 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
 	struct file_system_type *fsys;
 	struct inode *inode;
-	int i;
+	int ret;
 	unsigned blocksize;
 	unsigned blocks_per_page;
 	char *data;
@@ -2973,7 +2967,6 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 				ClearPageUptodate(page);
 				SetPageError(page);
 			}
-			unlock_page(page);
 			/* ZSO Zad3 */
 			/* Wychodzi chyba na to, ze proba dobrania sie do xattr w inode
 			 * wywala jadro */
@@ -2981,7 +2974,7 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 				if(IS_ENCRYPTED(inode)) {
 					if(page_address(page) == NULL) {
 						printk(KERN_WARNING "page jest null\n");
-						kmap(page);
+						//kmap(page);
 					}
 					data = page_address(page);
 					printk(KERN_WARNING "page_address : 0x%x\n", data);
@@ -2991,15 +2984,37 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 					printk(KERN_WARNING "Page size: %d Block size: %d\n", 
 							PAGE_CACHE_SIZE, blocksize);
 
-					for(i = 0; i < PAGE_CACHE_SIZE; i++) 
-						*((char*)(data + i)) += 1;
+					SetPageOwnerPriv1(page);
+
+					/* Encrypt */
+		/*			struct scatterlist sg;
+					struct csession *ses_ptr = (struct csession*)inode->i_private;
+					struct crypto_blkcipher *tfm = ses_ptr->tfm;
+					struct blkcipher_desc desc;
+					desc.tfm = tfm;
+					desc.flags = 0;
 					
-					/*for(i = 0; i < blocks_per_page; i++) {
-						printk(KERN_WARNING "Block %d: %s\n", i, 
-								page_address(page) + (i * blocksize));
-					}*/
+
+					if(PAGE_CACHE_SIZE % crypto_blkcipher_blocksize(tfm)) {
+						printk(KERN_WARNING "data size (%zu) isn't a miltiple of block \
+								size (%u)\n", PAGE_CACHE_SIZE, 
+								crypto_blkcipher_blocksize(tfm));
+						continue;
+					}
+
+					crypto_blkcipher_set_iv(tfm, ses_ptr->iv, CRYPT_BLOCK_SIZE);
+					sg_set_buf(&sg, data, PAGE_CACHE_SIZE);
+//					ret = crypto_blkcipher_encrypt(&desc, &sg, &sg, PAGE_CACHE_SIZE);
+
+					if(unlikely(ret)) {
+						printk(KERN_WARNING "CryptoApi failure: %d\n", ret);
+						continue;
+					}
+
+					printk(KERN_WARNING "Encrypted: %s\n", data);*/
 				}
 			}
+			unlock_page(page);
 		} else { /* bio_data_dir(bio) == WRITE */
 			if (!uptodate) {
 				SetPageError(page);

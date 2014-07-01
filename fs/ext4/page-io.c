@@ -26,6 +26,7 @@
 #include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/ratelimit.h>
+#include <linux/filecrypt.h>
 
 #include "ext4_jbd2.h"
 #include "xattr.h"
@@ -416,10 +417,11 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 	set_page_writeback(page);
 	ClearPageError(page);
 
+	/* Zad3 Encrypt */
 	if(IS_ENCRYPTED(inode)) {
-		printk(KERN_WARNING "ext4_bio_write_page: %s\n", page_address(page));
-		for(i = 0; i < PAGE_CACHE_SIZE; i++) {
-			*((char*)(page_address(page))+i) -= 1;
+		if(!PageOwnerPriv1(page)) {
+			printk(KERN_WARNING "Encrypt page: %s\n", page_address(page));
+			filecrypt_encrypt(page);
 		}
 	}
 	/*

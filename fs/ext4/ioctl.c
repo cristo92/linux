@@ -14,6 +14,7 @@
 #include <linux/compat.h>
 #include <linux/mount.h>
 #include <linux/file.h>
+#include <linux/random.h>
 #include <linux/filecrypt.h>
 #include <asm/uaccess.h>
 #include "ext4_jbd2.h"
@@ -223,25 +224,39 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct ext4_ioctl_encrypt key;
 	unsigned char bufkey[CRYPT_BLOCK_SIZE], hexkey[CRYPT_BLOCK_SIZE * 2];
 	unsigned int flags, err;
+	char iv[CRYPT_BLOCK_SIZE + 1]; //= "abcdef0123456789";
 
 	ext4_debug("cmd = %u, arg = %lu\n", cmd, arg);
 
 	switch (cmd) {
 	case EXT4_ENCRYPT:
 		if(inode->i_size > 0) return -EINVAL;
+
 		err = copy_from_user((void *)&key, (void __user *)arg, 
 			sizeof(struct ext4_ioctl_encrypt));
 		if(err != 0) printk(KERN_WARNING "ext4 copy_from_user\n");
+
 		if(!filecrypt_has_perms(&key))
 			return -EPERM;
+
 		err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME,
 			bufkey, CRYPT_BLOCK_SIZE);
 		//filecrypt_bin2hex(bufkey, hexkey, CRYPT_BLOCK_SIZE);
+
 		if(err == -ENODATA) {
 			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME, 
 				(void*)key.key_id, CRYPT_BLOCK_SIZE, XATTR_CREATE);
 			if(err < 0) {
 				printk(KERN_WARNING "ext4_xattr_set\n"); 
+				return err;
+			}
+			
+			get_random_bytes((void*)iv, CRYPT_BLOCK_SIZE);
+			iv[CRYPT_BLOCK_SIZE] = '\0';
+			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, XATTR_IV,
+				(void*)iv, CRYPT_BLOCK_SIZE, XATTR_CREATE);
+			if(err < 0) {
+				printk(KERN_WARNING "ext4_xattr_set\n");
 				return err;
 			}
 		} else {
@@ -253,6 +268,8 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			}
 		}
 		inode->i_flags |= S_ENCRYPTED;
+		err = filecrypt_start_csession(inode, key.key_id);
+		if(err) return err;
 		return 0;
 	case EXT4_IOC_GETFLAGS:
 		ext4_get_inode_flags(ei);

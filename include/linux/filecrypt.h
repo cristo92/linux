@@ -20,6 +20,7 @@ struct ext4_ioctl_encrypt {
 #define __NR_addkey 351
 
 #define XATTR_NAME "AES_KEY"
+#define XATTR_IV "IV"
 
 #ifdef __KERNEL__
 struct key_entry {
@@ -27,10 +28,22 @@ struct key_entry {
 	struct list_head list;
 };
 
+#define FILECRYPT_ENCRYPT 1
+#define FILECRYPT_DECRYPT 2
+
 int filecrypt_has_perms(struct ext4_ioctl_encrypt *key);
 int filecrypt_bin2hex(char* from, void* to, size_t size);
 int filecrypt_is_encrypted(struct inode *inode);
-void filecrypt_encrypt(char *page);
+int filecrypt_start_csession(struct inode *inode, void *key);
+int filecrypt_encrypt(struct page *page);
+int filecrypt_decrypt(struct page *page);
+
+struct csession {
+	struct semaphore sem;
+	struct crypto_blkcipher *tfm;
+	char iv[CRYPT_BLOCK_SIZE];
+};
+
 #endif
 
 #endif

@@ -33,6 +33,7 @@
 #include <linux/hardirq.h> /* for BUG_ON(!in_atomic()) only */
 #include <linux/memcontrol.h>
 #include <linux/cleancache.h>
+#include <linux/filecrypt.h>
 #include "internal.h"
 
 #define CREATE_TRACE_POINTS
@@ -628,14 +629,6 @@ void end_page_writeback(struct page *page)
 	if (!test_clear_page_writeback(page))
 		BUG();
 
-	if(IS_ENCRYPTED(page->mapping->host)) {
-		data = page_address(page);
-		printk(KERN_WARNING "end_page_writeback %s\n", data);
-		for(i = 0; i < PAGE_CACHE_SIZE; i++) {
-			*((char*)(data + i)) += 1;
-		}
-	}
-
 	smp_mb__after_clear_bit();
 	wake_up_page(page, PG_writeback);
 }
@@ -1190,7 +1183,7 @@ page_ok:
 		}
 		nr = nr - offset;
 
-		/* If users can be writing to this page using arbitrary
+		/*If users can be writing to this page using arbitrary
 		 * virtual addresses, take care about potential aliasing
 		 * before reading the page on the kernel side.
 		 */
@@ -1204,6 +1197,16 @@ page_ok:
 		if (prev_index != index || offset != prev_offset)
 			mark_page_accessed(page);
 		prev_index = index;
+
+		/* Zad 3 Decrypt */
+		if(IS_ENCRYPTED(inode)) {
+			lock_page(page);
+			if(PageOwnerPriv1(page)) {
+				printk(KERN_WARNING "Decrypt page: %s\n", page_address(page));
+				filecrypt_decrypt(page);
+			}
+			unlock_page(page);
+		}
 
 		/*
 		 * Ok, we have the page, and it's up-to-date, so
@@ -2363,6 +2366,12 @@ again:
 			flush_dcache_page(page);
 
 		pagefault_disable();
+		if(IS_ENCRYPTED(mapping->host)) {
+			if(PageOwnerPriv1(page)) {
+				printk(KERN_WARNING "Decrypt page: %s\n", page_address(page));
+				filecrypt_decrypt(page);
+			}
+		}
 		copied = iov_iter_copy_from_user_atomic(page, i, offset, bytes);
 		pagefault_enable();
 		flush_dcache_page(page);

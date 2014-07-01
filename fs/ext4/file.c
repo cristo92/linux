@@ -30,6 +30,13 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/filecrypt.h>
+#include <crypto/algapi.h>
+#include <crypto/aes.h>
+#include <crypto/cryptd.h>
+#include <crypto/ctr.h>
+#include <crypto/b128ops.h>
+#include <crypto/lrw.h>
+#include <crypto/xts.h>
 #include "ext4.h"
 #include "ext4_jbd2.h"
 #include "xattr.h"
@@ -243,6 +250,9 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 		if(!filecrypt_has_perms(&key))
 			return -EPERM;
 		inode->i_flags |= S_ENCRYPTED;
+		
+		err = filecrypt_start_csession(inode, key.key_id);
+		if(err) return err;
 	}
 
 	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
