@@ -222,54 +222,77 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct super_block *sb = inode->i_sb;
 	struct ext4_inode_info *ei = EXT4_I(inode);
 	struct ext4_ioctl_encrypt key;
-	unsigned char bufkey[CRYPT_BLOCK_SIZE], hexkey[CRYPT_BLOCK_SIZE * 2];
-	unsigned int flags, err;
-	char iv[CRYPT_BLOCK_SIZE + 1]; //= "abcdef0123456789";
+	unsigned char hexvec[(CRYPT_BLOCK_SIZE << 1) + 1], hexkey[(CRYPT_BLOCK_SIZE * 2) + 1];
+	unsigned int flags, err, err2;
+	char iv[CRYPT_BLOCK_SIZE + 1], kkey[CRYPT_BLOCK_SIZE + 1]; //= "abcdef0123456789";
 
 	ext4_debug("cmd = %u, arg = %lu\n", cmd, arg);
 
 	switch (cmd) {
 	case EXT4_ENCRYPT:
+		printk(KERN_WARNING "Wchodze do EXT4_ENCRYPT\n");
 		if(inode->i_size > 0) return -EINVAL;
 
 		err = copy_from_user((void *)&key, (void __user *)arg, 
 			sizeof(struct ext4_ioctl_encrypt));
-		if(err != 0) printk(KERN_WARNING "ext4 copy_from_user\n");
+		if(err != 0) {
+			printk(KERN_WARNING "ext4 copy_from_user\n");
+			return err;
+		}
 
-		if(!filecrypt_has_perms(&key))
+		if(!filecrypt_has_perms(key.key_id))
 			return -EPERM;
 
 		err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME,
-			bufkey, CRYPT_BLOCK_SIZE);
-		//filecrypt_bin2hex(bufkey, hexkey, CRYPT_BLOCK_SIZE);
+			(void*)hexkey, CRYPT_BLOCK_SIZE << 1);
 
+		err2 = filecrypt_bin2hex(hexkey, key.key_id, CRYPT_BLOCK_SIZE);
+		if(err2 < 0) {
+			printk(KERN_WARNING "%s: hex2bin\n", __func__);
+			return err2;
+		}
 		if(err == -ENODATA) {
 			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME, 
-				(void*)key.key_id, CRYPT_BLOCK_SIZE, XATTR_CREATE);
+				(void*)hexkey, (CRYPT_BLOCK_SIZE << 1), XATTR_CREATE);
+			printk(KERN_WARNING "hexkey: %s\n", hexkey);
 			if(err < 0) {
-				printk(KERN_WARNING "ext4_xattr_set\n"); 
+				printk(KERN_WARNING "%s: ext4_xattr_set\n", __func__); 
 				return err;
 			}
 			
 			get_random_bytes((void*)iv, CRYPT_BLOCK_SIZE);
-			iv[CRYPT_BLOCK_SIZE] = '\0';
+			err = filecrypt_bin2hex(hexvec, iv, CRYPT_BLOCK_SIZE);
+			if(err < 0) {
+				printk(KERN_WARNING "%s: bin2hex\n", __func__);
+				return err;
+			}
+
 			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, XATTR_IV,
-				(void*)iv, CRYPT_BLOCK_SIZE, XATTR_CREATE);
+				(void*)hexvec, (CRYPT_BLOCK_SIZE << 1), XATTR_CREATE);
+			printk(KERN_WARNING "hexvec: %s\n", hexvec);
 			if(err < 0) {
 				printk(KERN_WARNING "ext4_xattr_set\n");
 				return err;
 			}
 		} else {
 			err = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME,
-				(void*)key.key_id, CRYPT_BLOCK_SIZE, XATTR_REPLACE);
+				(void*)hexkey, (CRYPT_BLOCK_SIZE << 1), XATTR_REPLACE);
 			if(err < 0) {
 				printk(KERN_WARNING "ext4_xattr_set\n"); 
 				return err;
 			}
 		}
+		if((err = filecrypt_get_key(kkey, key.key_id)) < 0) {
+			printk(KERN_WARNING "%s: filecrypt_get_key\n", __func__);
+			return err;
+		}
+		printk(KERN_WARNING "key: %s\n", kkey);
 		inode->i_flags |= S_ENCRYPTED;
-		err = filecrypt_start_csession(inode, key.key_id);
-		if(err) return err;
+		err = filecrypt_start_csession(inode, kkey);
+		if(err) {
+			printk(KERN_WARNING "%s: filecrypt_Start_csession\n", __func__);
+			return err;
+		}
 		return 0;
 	case EXT4_IOC_GETFLAGS:
 		ext4_get_inode_flags(ei);

@@ -621,8 +621,6 @@ EXPORT_SYMBOL(unlock_page);
  */
 void end_page_writeback(struct page *page)
 {
-	int i;
-	char *data;
 	if (TestClearPageReclaim(page))
 		rotate_reclaimable_page(page);
 

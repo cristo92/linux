@@ -9,6 +9,8 @@
 #include <errno.h>
 
 struct ext4_ioctl_encrypt key1 = { .key_id = "1234567890ABCDEF" };
+struct ext4_ioctl_encrypt key2 = { .key_id = {0x3a, 0x6b, 0xff, 0x07, 0x99, 0xc7, 0x38, 0x9f, 
+	0x52, 0x2f, 0x38, 0x47, 0xc3, 0x3a, 0x46, 0x8f} };
 
 int main() {
 	int fd = creat("/root/file3", S_IRWXU);
@@ -16,7 +18,7 @@ int main() {
 	int ret = syscall(351, key1.key_id);
 	printf("syscall %d %s\n", ret, strerror(ret));
 	assert(ret == 0);
-	ret = ioctl(fd, EXT4_ENCRYPT, &key1);
+	ret = ioctl(fd, EXT4_ENCRYPT, &key2);
 	printf("errno %d %s\n", errno, strerror(errno));
 	close(fd);
 	assert(ret == 0);

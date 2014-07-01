@@ -4,16 +4,17 @@
 #include <linux/sched.h>
 #include <linux/fs.h>
 #include <linux/scatterlist.h>
+#include <linux/kernel.h>
 #include "ext4/xattr.h"
 #include "ext4/ext4.h"
 
-int filecrypt_has_perms(struct ext4_ioctl_encrypt *key) {
+int filecrypt_has_perms(void *key_id) {
 	struct key_entry *entry;
 	int ret = 0;
 
 	list_for_each_entry(entry, &current->keys, list) {
-		printk(KERN_WARNING "SZUKAMY %s MAMY: %s\n", key->key_id, entry->id);
-		if (memcmp(entry->id, key->key_id, CRYPT_BLOCK_SIZE) == 0) {
+		printk(KERN_WARNING "SZUKAMY %s MAMY: %s\n", key_id, entry->id);
+		if (memcmp(entry->id, key_id, CRYPT_BLOCK_SIZE) == 0) {
 			ret = 1;
 			goto out;
 		}
@@ -24,12 +25,27 @@ out:
 	return ret;
 }
 
-int filecrypt_bin2hex(char *from, void *to, size_t size) {
+int filecrypt_get_key(void *key, void *id) {
+	struct key_entry *entry;
+	int ret = 0;
+
+	list_for_each_entry(entry, &current->keys, list) {
+		if( memcmp(entry->id, id, CRYPT_BLOCK_SIZE) == 0 ) { 
+			memcpy(key, entry->key, CRYPT_BLOCK_SIZE);
+			printk(KERN_WARNING "get_key %s %s\n", key, id);
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+int filecrypt_bin2hex(char *dst, void *src, size_t size) {
 	int i, ret;
 	for(i = 0; i < size; ++i) {
-		ret = snprintf(to + i * 2, 3, "%x", from[i]);
+		ret = snprintf((char*)dst + (i * 2), 3, "%02X", *((unsigned char*)src + i));
 		if(ret < 0) return ret;
-		if(ret != -2) return -1;
+		if(ret != 2) return -1;
 	}
 	return 0;
 }
@@ -48,6 +64,7 @@ int filecrypt_start_csession(struct inode *inode, void *key) {
 		struct crypto_blkcipher *blk_tfm;
 		struct blkcipher_alg *blkalg;
 		char alg_name[] = "ctr(aes)";
+		char hexbuf[CRYPT_BLOCK_SIZE << 1];
 		int err;
 
 		blk_tfm = crypto_alloc_blkcipher(alg_name, 0, 0);
@@ -87,10 +104,15 @@ int filecrypt_start_csession(struct inode *inode, void *key) {
 
 		memset(ses_new, 0, sizeof(*ses_new));
 		ses_new->tfm = blk_tfm;
-		err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, XATTR_IV, (void*)ses_new->iv,
-				CRYPT_BLOCK_SIZE);
-		if(err < 0)
+		if((err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, XATTR_IV, 
+				hexbuf, CRYPT_BLOCK_SIZE << 1)) < 0) {
+			printk(KERN_WARNING "%s: xattr_get \n", __func__);
 			return err;
+		}
+		if((err = hex2bin(ses_new->iv, hexbuf, CRYPT_BLOCK_SIZE)) < 0) {
+			printk(KERN_WARNING "%d: hex2bin\n", __func__);
+			return err;
+		}
 		mutex_init(&ses_new->sem);
 
 		inode->i_private = ses_new;
@@ -110,7 +132,7 @@ int filecrypt_run_cipher(struct page *page, int c_op) {
 	desc.tfm = tfm;
 	desc.flags = 0;
 
-	down(&ses_ptr->sem);
+	//down(&ses_ptr->sem);
 
 	if(PAGE_CACHE_SIZE % crypto_blkcipher_blocksize(tfm)) {
 		printk(KERN_WARNING "data size (%zu) isn't a multiple of block size (%u)\n",
@@ -156,7 +178,7 @@ int filecrypt_run_cipher(struct page *page, int c_op) {
 	ret = 0;
 
 out:
-	up(&ses_ptr->sem);
+	//up(&ses_ptr->sem);
 	return ret;
 }
 
@@ -165,4 +187,10 @@ int filecrypt_decrypt(struct page *page) {
 }
 int filecrypt_encrypt(struct page *page) {
 	return filecrypt_run_cipher(page, FILECRYPT_ENCRYPT);
+}
+
+void filecrypt_finish_csession(struct inode *inode) {
+	crypto_free_blkcipher(((struct csession*)inode->i_private)->tfm);
+	kfree((struct csession*)inode->i_private);
+	inode->i_private = NULL;
 }

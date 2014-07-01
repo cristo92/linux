@@ -31,15 +31,17 @@ struct key_entry {
 #define FILECRYPT_ENCRYPT 1
 #define FILECRYPT_DECRYPT 2
 
-int filecrypt_has_perms(struct ext4_ioctl_encrypt *key);
-int filecrypt_bin2hex(char* from, void* to, size_t size);
+int filecrypt_has_perms(void *key_id);
+int filecrypt_get_key(void *key, void *id);
+int filecrypt_bin2hex(char* dst, void* src, size_t size);
 int filecrypt_is_encrypted(struct inode *inode);
 int filecrypt_start_csession(struct inode *inode, void *key);
 int filecrypt_encrypt(struct page *page);
 int filecrypt_decrypt(struct page *page);
+void filecrypt_finish_csession(struct inode *inode);
 
 struct csession {
-	struct semaphore sem;
+	struct mutex sem;
 	struct crypto_blkcipher *tfm;
 	char iv[CRYPT_BLOCK_SIZE];
 };

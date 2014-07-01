@@ -234,24 +234,26 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 	struct path path;
 	char buf[64], *cp;
 	char hexbuf[CRYPT_BLOCK_SIZE << 1];
-	struct ext4_ioctl_encrypt key;
+	char key_id[CRYPT_BLOCK_SIZE], key[CRYPT_BLOCK_SIZE];
 	int err;
 
 	err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME,
-		(void*)key.key_id, CRYPT_BLOCK_SIZE);
+		(void*)hexbuf, CRYPT_BLOCK_SIZE << 1);
 	if(err != -ENODATA) {
 		if(err < 0)
 			return err;
-		/*err = hex2bin(key.key_id, hexbuf, CRYPT_BLOCK_SIZE);
 		printk(KERN_WARNING "ENODATA %d\n", err);
-		if(err != 0) return -EINVAL;*/
-		printk(KERN_WARNING "ENODATA %s\n", key.key_id);
+		err = hex2bin(key_id, hexbuf, CRYPT_BLOCK_SIZE);
+		printk(KERN_WARNING "hex2bin %s %s\n", key_id, hexbuf);
+		if(err != 0) return -EINVAL;
+		printk(KERN_WARNING "ENODATA %s\n", key_id);
 		if(filecrypt_is_encrypted(inode) == 0) return -123;
-		if(!filecrypt_has_perms(&key))
+		if(!filecrypt_has_perms(key_id))
 			return -EPERM;
 		inode->i_flags |= S_ENCRYPTED;
 		
-		err = filecrypt_start_csession(inode, key.key_id);
+		if((err = filecrypt_get_key(key, key_id)) < 0) return err;
+		err = filecrypt_start_csession(inode, key);
 		if(err) return err;
 	}
 

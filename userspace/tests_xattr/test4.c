@@ -14,7 +14,7 @@ struct ext4_ioctl_encrypt key2 = { .key_id = "1234567890abcdef" };
 int main() {
 	int fd = creat("/root/file3", S_IRWXU);
 	if(fd < 0) printf("FAIL: creat\n");
-	int ret = syscall(351, key2.key_id);
+	int ret = syscall(351, key1.key_id);
 	assert(ret == 0);
 	ret = ioctl(fd, EXT4_ENCRYPT, &key1);
 	printf("errno %d %s\n", errno, strerror(errno));
