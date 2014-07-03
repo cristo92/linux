@@ -1199,7 +1199,7 @@ page_ok:
 		/* Zad 3 Decrypt */
 		if(IS_ENCRYPTED(inode)) {
 			lock_page(page);
-			if(PageOwnerPriv1(page)) {
+			if(!PageOwnerPriv1(page)) {
 				filecrypt_decrypt(page);
 			}
 			unlock_page(page);
@@ -2364,17 +2364,8 @@ again:
 
 		pagefault_disable();
 		if(IS_ENCRYPTED(mapping->host)) {
-			int page_locked = 0;
-			if(!PageLocked(page)) {
-				lock_page(page);
-				page_locked = 1;
-			}
-			if(PageOwnerPriv1(page)) {
+			if(!PageOwnerPriv1(page)) {
 				filecrypt_decrypt(page);
-			}
-			if(page_locked) {
-				page_locked = 0;
-				unlock_page(page);
 			}
 		}
 		copied = iov_iter_copy_from_user_atomic(page, i, offset, bytes);

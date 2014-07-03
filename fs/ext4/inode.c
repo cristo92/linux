@@ -2966,7 +2966,7 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 				SetPageError(page);
 			}
 			/* ZSO Zad3 */
-			if(memcmp(fsys->name, "ext4", 4) == 0) {
+			/*if(memcmp(fsys->name, "ext4", 4) == 0) {
 				if(IS_ENCRYPTED(inode)) {
 					if(page_address(page) == NULL) {
 						printk(KERN_WARNING "page jest null\n");
@@ -2974,7 +2974,7 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 
 					SetPageOwnerPriv1(page);
 				}
-			}
+			}*/
 			unlock_page(page);
 		} else { /* bio_data_dir(bio) == WRITE */
 			if (!uptodate) {

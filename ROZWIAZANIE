@@ -1,8 +1,65 @@
 Ogólna idea:
-Szyfrowaniu podlegają całe strony. Flagi strony PG_OWNER_PRIV_1 używam jako 
-informacji czy strona jest w danym momencie zaszyfrowana, czy odszyfrowana. 
+Szyfrowaniu podlegają całe strony. Flagi strony PG_owner_priv_1 używam jako 
+informacji czy strona jest w danym momencie zaszyfrowana, czy odszyfrowana.
+Generalnie, poza pewnymi szczególnymi przypadkami strony w cache są 
+odszyfrowane.
 Są trzy miejsca, gdzie szyfruję/odszyfrowuje strony:
 - fs/ext4/page-io.c ext4_bio_write_page
-	Tutaj przygotowuję stronę do szyfrowania, zaszyfrowuję ją, jeśli jest
+	Tutaj przygotowuję stronę do zapiswania, zaszyfrowuję ją, jeśli jest
 	odszyfrowana.
-- mm/filemap.c 
+- mm/filemap.c generic_perform_write 
+	W tej funkcji odbywa się zapis bajtów podanych przez użytkownika
+	(dokładnie robi to iov_iter_copy_from_user). Więc przed tym zapisem
+	trzeba sprawdzić, czy strona jest zaszyfrowana(może się tak zdażyć np.
+	wtedy gdy dopiero co ją ściągneliśmy z dysku, albo była przed chwilą
+	przygotowywana do zapisu) i jeśli jest zaszyfrowana to ją odszyfrowuję.
+- mm/filemap.c do_generic_file_read
+	Ta funkcja dostarcza strony dla bardziej wysokopoziomowych funkcji.
+	Nie wiemy tutaj czy strona została ściągnięta z dysku czy z cache.
+	Nie interesuje nas to specjalnie, jeśli jesteśmy w stanie sprawdzić
+	czy jest zaszyfrowana(tutaj kłania się flaga PG_owner_priv_1).
+	Jeśli jest zaszyfrowana, to odszyfrowujemy.
+Takie rozwiązanie sprawia, że szyfrujemy/deszyfrujemy jedynie przy
+zapisie/odczycie stron z dysku, więc jest bardzo wydajne.
+W domyśle flaga PG_owner_priv_1 jest ustawiona na zero, co ja interpretuję
+jako "zaszyfrowana", sprawia to, że strony które są ściągane z dysku od 
+razu są oznaczone jako zaszyfrowane.
+
+Szyfrowanie/deszyfrowanie:
+Podlegają mu całe strony. Dzielę strony na bloki i na każdym bloku 
+odpalam algorytm AES128 z odpowiednim wektorem początkowym.
+
+Xattr:
+W xattr każdego szyfrowanego pliku przechowuję wektor początkowy IV
+oraz identyfikator klucza, którym go szyfrowano. Jako, że xattr
+nie pozwala na przechowywanie bajtu "\0", to przy zapisie danych do xattr
+konwertuję je na zapis w hex. 
+
+ioctl:
+Dodałem odpowdni wpis do switcha w ext4_ioctl(fs/ext4/ioctl.c). W ioctl
+zapisuję identyfikator klucza(konwertowany do hex) do xattr, generuję
+wektor początkowy i zapisuję do xattr. Oraz tworzę sesję szyfrujującą
+dla inode, z której będę korzystał przy szufrowaniu/deszyfrowaniu stron.
+Oraz ustawiam flagę dla inode S_ENCRYPTED, która informuje, że plik, z
+którym powiązany jest inode jest szyfrowany.
+
+open:
+Zmodyfikowałem ext4_file_open(fs/ext4/file.c). Najpierw wczytuję id klucza
+z xattr, później sprawdzam czy proces ma dany klucz. Ustawiam flagę 
+S_ENCRYPTED i tworzę sesję do szyfrowania.
+
+fork i lista kluczy:
+strukturę task_struct wzbogaciłem o pole keys, które jest listą par 
+(klucz,id). Przy forku ta lista jest kopiowana, a przy zabijaniu procesu
+jest niszczona.
+
+syscall:
+Nowo dodany syscall ma numer 351 i należy go wywoływać:
+syscall(__NR_addkey, unsigned char *key);
+
+Na koniec dodam uczciwie, że można dostrzec podobieństwo mojej idei 
+rozwiązanie z ideą Pawła Sienkowskiego. Wynika to z tego, że dużo razem
+dyskutowaliśmy nad tym zadaniem oraz podnosiliśmy się na duchu w chwilach 
+kryzysu. Zaznaczam, że ani jedna linijka kodu nie jest współdzielona i nie
+pokazywaliśmy sobie kodu.
+

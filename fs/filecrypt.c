@@ -182,10 +182,10 @@ int filecrypt_run_cipher(struct page *page, int c_op) {
 
 	switch(c_op) {
 		case FILECRYPT_ENCRYPT:
-			SetPageOwnerPriv1(page);	
+			ClearPageOwnerPriv1(page);	
 			break;
 		case FILECRYPT_DECRYPT:
-			ClearPageOwnerPriv1(page);
+			SetPageOwnerPriv1(page);
 	}
 
 	ret = 0;

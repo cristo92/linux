@@ -419,17 +419,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 
 	/* Zad3 Encrypt */
 	if(IS_ENCRYPTED(inode)) {
-		int page_locked = 0;
-		if(!PageLocked(page)) {
-			lock_page(page);
-			page_locked = 1;
-		}
-		if(!PageOwnerPriv1(page)) {
+		if(PageOwnerPriv1(page)) {
 			filecrypt_encrypt(page);
-		}
-		if(page_locked) {
-			page_locked = 0;
-			unlock_page(page);
 		}
 	}
 	/*
