@@ -23,7 +23,7 @@ asmlinkage int sys_addkey(unsigned char *key) {
 	struct hash_desc desc;
 	struct scatterlist sg;
 	unsigned char hash_buf[CRYPT_BLOCK_SIZE];
-	unsigned char hexbuf[(CRYPT_BLOCK_SIZE << 1) + 1];
+	unsigned char hexbuf[(CRYPT_BLOCK_SIZE << 1)];
 	int err;
 
 	entry = kmalloc(sizeof(struct key_entry), GFP_KERNEL);
@@ -51,10 +51,8 @@ asmlinkage int sys_addkey(unsigned char *key) {
 	list_add(&(entry->list), &task->keys);
 	if((err = filecrypt_bin2hex(hexbuf, entry->id, CRYPT_BLOCK_SIZE)) < 0) {
 		printk(KERN_WARNING "%s: filecrypt_bin2hex\n", __func__);
-		return err;
+		goto error2;
 	}
-	hexbuf[CRYPT_BLOCK_SIZE << 1] = '\n';
-	printk(KERN_WARNING "addkey %s %s\n", entry->key, hexbuf);
 	return 0;
 error2:
 	kfree(entry);
