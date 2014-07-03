@@ -2945,10 +2945,8 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
 	struct file_system_type *fsys;
 	struct inode *inode;
-	int ret;
 	unsigned blocksize;
 	unsigned blocks_per_page;
-	char *data;
 
 	do {
 		struct page *page = bvec->bv_page;
@@ -2972,43 +2970,9 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 				if(IS_ENCRYPTED(inode)) {
 					if(page_address(page) == NULL) {
 						printk(KERN_WARNING "page jest null\n");
-						//kmap(page);
 					}
-					data = page_address(page);
-					printk(KERN_WARNING "page_address : 0x%x\n", data);
-					printk(KERN_WARNING "Inode nr: %u\n",page->mapping->host->i_ino);
-					printk(KERN_WARNING "Offset: %u\n", page->index);
-					printk(KERN_WARNING "Page size: %u Block size: %u\n", 
-							PAGE_CACHE_SIZE, blocksize);
 
 					SetPageOwnerPriv1(page);
-
-					/* Encrypt */
-		/*			struct scatterlist sg;
-					struct csession *ses_ptr = (struct csession*)inode->i_private;
-					struct crypto_blkcipher *tfm = ses_ptr->tfm;
-					struct blkcipher_desc desc;
-					desc.tfm = tfm;
-					desc.flags = 0;
-					
-
-					if(PAGE_CACHE_SIZE % crypto_blkcipher_blocksize(tfm)) {
-						printk(KERN_WARNING "data size (%zu) isn't a miltiple of block \
-								size (%u)\n", PAGE_CACHE_SIZE, 
-								crypto_blkcipher_blocksize(tfm));
-						continue;
-					}
-
-					crypto_blkcipher_set_iv(tfm, ses_ptr->iv, CRYPT_BLOCK_SIZE);
-					sg_set_buf(&sg, data, PAGE_CACHE_SIZE);
-//					ret = crypto_blkcipher_encrypt(&desc, &sg, &sg, PAGE_CACHE_SIZE);
-
-					if(unlikely(ret)) {
-						printk(KERN_WARNING "CryptoApi failure: %d\n", ret);
-						continue;
-					}
-
-					printk(KERN_WARNING "Encrypted: %s\n", data);*/
 				}
 			}
 			unlock_page(page);

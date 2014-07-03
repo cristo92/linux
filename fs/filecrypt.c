@@ -124,19 +124,18 @@ int filecrypt_run_cipher(struct page *page, int c_op) {
 	struct inode *inode = page->mapping->host; 
 	struct scatterlist sg;
 	struct csession *ses_ptr = (struct csession*)inode->i_private;
-	printk(KERN_WARNING "csession 0x%x data 0x%x\n", ses_ptr, data);
 	struct crypto_blkcipher *tfm = ses_ptr->tfm;
 	struct blkcipher_desc desc;
 	char iv[CRYPT_BLOCK_SIZE];
 	desc.tfm = tfm;
 	desc.flags = 0;
 
-	down(&ses_ptr->sem);
-
 	size_t blksize = 1 << inode->i_blkbits;
 	size_t blknr = 1 << (PAGE_CACHE_SHIFT - inode->i_blkbits);
 	size_t blkid, pageid = page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits); 
 	u64 blktemp, ublkid;
+
+	down(&ses_ptr->sem);
 
 	for(blkid = 0; blkid < blknr; blkid++, data += blksize) {
 		if((void*)data - page_address(page) >= PAGE_CACHE_SIZE) {

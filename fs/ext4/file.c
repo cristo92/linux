@@ -237,24 +237,22 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 	char key_id[CRYPT_BLOCK_SIZE], key[CRYPT_BLOCK_SIZE];
 	int err;
 
+	/* Zad3 
+	 * Check xattr to get know if file is encrypted */ 
 	err = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, XATTR_NAME,
 		(void*)hexbuf, CRYPT_BLOCK_SIZE << 1);
 	if(err != -ENODATA) {
-		if(err < 0)
-			return err;
-		printk(KERN_WARNING "ENODATA %d\n", err);
-		err = hex2bin(key_id, hexbuf, CRYPT_BLOCK_SIZE);
-		printk(KERN_WARNING "hex2bin %s %s\n", key_id, hexbuf);
-		if(err != 0) return -EINVAL;
-		printk(KERN_WARNING "ENODATA %s\n", key_id);
-		if(filecrypt_is_encrypted(inode) == 0) return -123;
-		if(!filecrypt_has_perms(key_id))
-			return -EPERM;
+		if(err < 0) return err;
+		if((err = hex2bin(key_id, hexbuf, CRYPT_BLOCK_SIZE)) != 0) {
+			printk(KERN_WARNING "%s: hex2bin %s\n", __func__, key_id);
+			return -EINVAL;
+		}
+		if(filecrypt_is_encrypted(inode) == 0) return -EINVAL;
+		if(!filecrypt_has_perms(key_id)) return -EPERM;
 		inode->i_flags |= S_ENCRYPTED;
 		
 		if((err = filecrypt_get_key(key, key_id)) < 0) return err;
-		err = filecrypt_start_csession(inode, key);
-		if(err) return err;
+		if((err = filecrypt_start_csession(inode, key)) != 0) return err;
 	}
 
 	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&

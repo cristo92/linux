@@ -407,7 +407,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 	unsigned block_start, blocksize;
 	struct buffer_head *bh, *head;
 	int ret = 0;
-	int nr_submitted = 0, i;
+	int nr_submitted = 0;
 
 	blocksize = 1 << inode->i_blkbits;
 
@@ -419,9 +419,17 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 
 	/* Zad3 Encrypt */
 	if(IS_ENCRYPTED(inode)) {
+		int page_locked = 0;
+		if(!PageLocked(page)) {
+			lock_page(page);
+			page_locked = 1;
+		}
 		if(!PageOwnerPriv1(page)) {
-//			printk(KERN_WARNING "Encrypt page: %s\n", page_address(page));
 			filecrypt_encrypt(page);
+		}
+		if(page_locked) {
+			page_locked = 0;
+			unlock_page(page);
 		}
 	}
 	/*

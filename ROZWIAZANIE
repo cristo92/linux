@@ -1,0 +1,8 @@
+Ogólna idea:
+Szyfrowaniu podlegają całe strony. Flagi strony PG_OWNER_PRIV_1 używam jako 
+informacji czy strona jest w danym momencie zaszyfrowana, czy odszyfrowana. 
+Są trzy miejsca, gdzie szyfruję/odszyfrowuje strony:
+- fs/ext4/page-io.c ext4_bio_write_page
+	Tutaj przygotowuję stronę do szyfrowania, zaszyfrowuję ją, jeśli jest
+	odszyfrowana.
+- mm/filemap.c 
