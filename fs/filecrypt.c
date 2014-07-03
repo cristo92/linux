@@ -5,6 +5,7 @@
 #include <linux/fs.h>
 #include <linux/scatterlist.h>
 #include <linux/kernel.h>
+#include <linux/semaphore.h>
 #include "ext4/xattr.h"
 #include "ext4/ext4.h"
 
@@ -113,7 +114,7 @@ int filecrypt_start_csession(struct inode *inode, void *key) {
 			printk(KERN_WARNING "%d: hex2bin\n", __func__);
 			return err;
 		}
-		mutex_init(&ses_new->sem);
+		sema_init(&ses_new->sem, 1);
 
 		inode->i_private = ses_new;
 
@@ -132,7 +133,7 @@ int filecrypt_run_cipher(struct page *page, int c_op) {
 	desc.tfm = tfm;
 	desc.flags = 0;
 
-	//down(&ses_ptr->sem);
+	down(&ses_ptr->sem);
 
 	if(PAGE_CACHE_SIZE % crypto_blkcipher_blocksize(tfm)) {
 		printk(KERN_WARNING "data size (%zu) isn't a multiple of block size (%u)\n",
@@ -178,7 +179,7 @@ int filecrypt_run_cipher(struct page *page, int c_op) {
 	ret = 0;
 
 out:
-	//up(&ses_ptr->sem);
+	up(&ses_ptr->sem);
 	return ret;
 }
 
