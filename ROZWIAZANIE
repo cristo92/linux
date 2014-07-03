@@ -57,6 +57,12 @@ syscall:
 Nowo dodany syscall ma numer 351 i należy go wywoływać:
 syscall(__NR_addkey, unsigned char *key);
 
+Konfiguracacja i kompilacja:
+Konfiguracja z ustawieniami ze strony 
+http://students.mimuw.edu.pl/ZSO/PUBLIC-SO/2013-2014/_build/html/_downloads/config
+Dodać CONFIG_CRYPTO_CTR=y do powyższej konfiguracji.
+Make standardowo.
+
 Na koniec dodam uczciwie, że można dostrzec podobieństwo mojej idei 
 rozwiązanie z ideą Pawła Sienkowskiego. Wynika to z tego, że dużo razem
 dyskutowaliśmy nad tym zadaniem oraz podnosiliśmy się na duchu w chwilach 
