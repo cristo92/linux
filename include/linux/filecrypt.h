@@ -41,7 +41,7 @@ int filecrypt_decrypt(struct page *page);
 void filecrypt_finish_csession(struct inode *inode);
 
 struct csession {
-	struct mutex sem;
+	struct semaphore sem;
 	struct crypto_blkcipher *tfm;
 	char iv[CRYPT_BLOCK_SIZE];
 };

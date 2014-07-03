@@ -14,9 +14,11 @@ char buf[1000];
 
 int main() {
 	int ret = syscall(351, key1.key_id), err = 1, err2, i = 0;
+	if(ret != 0) printf("syscall %d %s\n", errno, strerror(errno));
 	assert(ret == 0);
 	int fd = open("/root/file4", O_RDWR);
-	printf("file descriptor: %d\n", fd);
+	if(fd < 0) printf("open %d %s\n", errno, strerror(errno));
+	assert(fd >= 0);
 	//printf("errno %d %s\n", errno, strerror(errno));
 	for(i = 0; i < 1 && err; i++) {
 		err = read(fd, buf, 16);
@@ -29,7 +31,6 @@ int main() {
 		assert(err2 == err + 1);
 	}
 	close(fd);
-	assert(fd >= 0);
 
 	return 0;
 }

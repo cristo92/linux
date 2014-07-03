@@ -16,10 +16,10 @@ int main() {
 	int fd = creat("/root/file3", S_IRWXU);
 	if(fd < 0) printf("FAIL: creat\n");
 	int ret = syscall(351, key1.key_id);
-	printf("syscall %d %s\n", ret, strerror(ret));
+	if(ret != 0) printf("syscall %d %s\n", errno, strerror(errno));
 	assert(ret == 0);
 	ret = ioctl(fd, EXT4_ENCRYPT, &key2);
-	printf("errno %d %s\n", errno, strerror(errno));
+	if(ret != 0) printf("ioctl %d %s\n", errno, strerror(errno));
 	close(fd);
 	assert(ret == 0);
 

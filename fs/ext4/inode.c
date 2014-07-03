@@ -2968,8 +2968,6 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 				SetPageError(page);
 			}
 			/* ZSO Zad3 */
-			/* Wychodzi chyba na to, ze proba dobrania sie do xattr w inode
-			 * wywala jadro */
 			if(memcmp(fsys->name, "ext4", 4) == 0) {
 				if(IS_ENCRYPTED(inode)) {
 					if(page_address(page) == NULL) {
@@ -2978,10 +2976,9 @@ static void ext4_mpage_end_io(struct bio *bio, int err)
 					}
 					data = page_address(page);
 					printk(KERN_WARNING "page_address : 0x%x\n", data);
-					printk(KERN_WARNING "Inode nr: %d\n",page->mapping->host->i_ino);
-					printk(KERN_WARNING "Page: %s\n", data);
-					printk(KERN_WARNING "Offset: %d\n", page->index);
-					printk(KERN_WARNING "Page size: %d Block size: %d\n", 
+					printk(KERN_WARNING "Inode nr: %u\n",page->mapping->host->i_ino);
+					printk(KERN_WARNING "Offset: %u\n", page->index);
+					printk(KERN_WARNING "Page size: %u Block size: %u\n", 
 							PAGE_CACHE_SIZE, blocksize);
 
 					SetPageOwnerPriv1(page);

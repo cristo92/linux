@@ -17,7 +17,7 @@ int main() {
 	int ret = syscall(351, key1.key_id);
 	assert(ret == 0);
 	ret = ioctl(fd, EXT4_ENCRYPT, &key1);
-	printf("errno %d %s\n", errno, strerror(errno));
+	if(errno != EPERM) printf("errno %d %s\n", errno, strerror(errno));
 	close(fd);
 	assert(errno == EPERM);
 

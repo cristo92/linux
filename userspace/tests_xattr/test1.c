@@ -14,7 +14,6 @@ int main() {
 	int fd = open("/root/file2", O_WRONLY | O_CREAT, S_IRWXU);
 	if(fd < 0) printf("FAIL: open\n");
 	int ret = ioctl(fd, EXT4_ENCRYPT, &key1);
-	printf("errno %d %s\n", errno, strerror(errno));
 	close(fd);
 	assert(errno == EINVAL);
 

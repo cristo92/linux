@@ -12,7 +12,6 @@ struct ext4_ioctl_encrypt key1 = { .key_id = "1234567890ABCDEF" };
 
 int main() {
 	int fd = open("/root/file3", O_WRONLY, S_IRWXU);
-	printf("errno %d %s\n", errno, strerror(errno));
 	if(fd >= 0) close(fd);
 	assert(errno == EPERM);
 

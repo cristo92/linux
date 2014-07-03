@@ -1200,7 +1200,7 @@ page_ok:
 		if(IS_ENCRYPTED(inode)) {
 			lock_page(page);
 			if(PageOwnerPriv1(page)) {
-				printk(KERN_WARNING "Decrypt page: %s\n", page_address(page));
+//				printk(KERN_WARNING "Decrypt page: %s\n", page_address(page));
 				filecrypt_decrypt(page);
 			}
 			unlock_page(page);
@@ -2366,7 +2366,7 @@ again:
 		pagefault_disable();
 		if(IS_ENCRYPTED(mapping->host)) {
 			if(PageOwnerPriv1(page)) {
-				printk(KERN_WARNING "Decrypt page: %s\n", page_address(page));
+//				printk(KERN_WARNING "Decrypt page: %s\n", page_address(page));
 				filecrypt_decrypt(page);
 			}
 		}

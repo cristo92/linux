@@ -12,10 +12,10 @@ struct ext4_ioctl_encrypt key1 = { .key_id = "1234567890ABCDEF" };
 
 int main() {
 	int ret = syscall(351, key1.key_id);
-	printf("syscall %d %s\n", ret, strerror(ret));
+	if(ret != 0) printf("syscall %d %s\n", ret, strerror(ret));
 	assert(ret == 0);
 	int fd = open("/root/file4", O_WRONLY | O_APPEND), i, err;
-	if(fd < 0) printf("FAIL: open\n");
+	if(fd < 0) printf("FAIL: open %d %s\n", errno, strerror(errno));
 	assert(fd >= 0);
 	for(i = 0; i < 1; i++) {
 		err = write(fd, key1.key_id, 16);

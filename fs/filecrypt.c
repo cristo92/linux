@@ -14,7 +14,6 @@ int filecrypt_has_perms(void *key_id) {
 	int ret = 0;
 
 	list_for_each_entry(entry, &current->keys, list) {
-		printk(KERN_WARNING "SZUKAMY %s MAMY: %s\n", key_id, entry->id);
 		if (memcmp(entry->id, key_id, CRYPT_BLOCK_SIZE) == 0) {
 			ret = 1;
 			goto out;
@@ -28,12 +27,10 @@ out:
 
 int filecrypt_get_key(void *key, void *id) {
 	struct key_entry *entry;
-	int ret = 0;
 
 	list_for_each_entry(entry, &current->keys, list) {
 		if( memcmp(entry->id, id, CRYPT_BLOCK_SIZE) == 0 ) { 
 			memcpy(key, entry->key, CRYPT_BLOCK_SIZE);
-			printk(KERN_WARNING "get_key %s %s\n", key, id);
 			return 0;
 		}
 	}
@@ -111,7 +108,7 @@ int filecrypt_start_csession(struct inode *inode, void *key) {
 			return err;
 		}
 		if((err = hex2bin(ses_new->iv, hexbuf, CRYPT_BLOCK_SIZE)) < 0) {
-			printk(KERN_WARNING "%d: hex2bin\n", __func__);
+			printk(KERN_WARNING "%s: hex2bin\n", __func__);
 			return err;
 		}
 		sema_init(&ses_new->sem, 1);
@@ -122,7 +119,7 @@ int filecrypt_start_csession(struct inode *inode, void *key) {
 }
 
 int filecrypt_run_cipher(struct page *page, int c_op) {
-	int i = 0, ret;
+	int ret, i;
 	char *data = page_address(page);
 	struct inode *inode = page->mapping->host; 
 	struct scatterlist sg;
@@ -130,42 +127,58 @@ int filecrypt_run_cipher(struct page *page, int c_op) {
 	printk(KERN_WARNING "csession 0x%x data 0x%x\n", ses_ptr, data);
 	struct crypto_blkcipher *tfm = ses_ptr->tfm;
 	struct blkcipher_desc desc;
+	char iv[CRYPT_BLOCK_SIZE];
 	desc.tfm = tfm;
 	desc.flags = 0;
 
 	down(&ses_ptr->sem);
 
-	if(PAGE_CACHE_SIZE % crypto_blkcipher_blocksize(tfm)) {
-		printk(KERN_WARNING "data size (%zu) isn't a multiple of block size (%u)\n",
-				PAGE_CACHE_SIZE, crypto_blkcipher_blocksize(tfm));
-		ret = -EINVAL;
-		goto out;
-	}
+	size_t blksize = 1 << inode->i_blkbits;
+	size_t blknr = 1 << (PAGE_CACHE_SHIFT - inode->i_blkbits);
+	size_t blkid, pageid = page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits); 
+	u64 blktemp, ublkid;
 
-	crypto_blkcipher_set_iv(tfm, ses_ptr->iv, CRYPT_BLOCK_SIZE);
-	sg_set_buf(&sg, data, PAGE_CACHE_SIZE);
-	switch(c_op) {
-		case FILECRYPT_ENCRYPT:
-			ret = crypto_blkcipher_encrypt(&desc, &sg, &sg, PAGE_CACHE_SIZE);
-			break;
-		case FILECRYPT_DECRYPT:
-			ret = crypto_blkcipher_decrypt(&desc, &sg, &sg, PAGE_CACHE_SIZE);
-		if(unlikely(ret)) {
-			printk(KERN_WARNING "crypto_blkcipher_encrypt/decrypt\n");
+	for(blkid = 0; blkid < blknr; blkid++, data += blksize) {
+		if((void*)data - page_address(page) >= PAGE_CACHE_SIZE) {
+			printk(KERN_WARNING "Wyszedlem poza zakres strony!!\n");
+			ret = -EINVAL;
 			goto out;
 		}
-	}
 
-	if(unlikely(ret)) {
-		printk(KERN_WARNING "CryptoApi failure: %d\n", ret);
-		goto out;
-	}
+		ublkid = blkid + pageid;
+		blktemp = blksize;
+		blktemp = blksize * ublkid;
+		memcpy(iv, ses_ptr->iv, CRYPT_BLOCK_SIZE);
 
-	switch(c_op) {
-		case FILECRYPT_ENCRYPT:
-			printk(KERN_WARNING "Encrypted: %s\n", data);
-		case FILECRYPT_DECRYPT:
-			printk(KERN_WARNING "Decrypted: %s\n", data);
+		for(i = 0; i < 8; i++) {
+			iv[i] ^= *(((char*)&blktemp) + i);
+		}
+
+		if(blksize % crypto_blkcipher_blocksize(tfm)) {
+			printk(KERN_WARNING "data size (%zu) isn't a multiple of block size (%u)\n",
+					blksize, crypto_blkcipher_blocksize(tfm));
+			ret = -EINVAL;
+			goto out;
+		}
+
+		crypto_blkcipher_set_iv(tfm, iv, CRYPT_BLOCK_SIZE);
+		sg_set_buf(&sg, data, blksize);
+		switch(c_op) {
+			case FILECRYPT_ENCRYPT:
+				ret = crypto_blkcipher_encrypt(&desc, &sg, &sg, blksize);
+				break;
+			case FILECRYPT_DECRYPT:
+			ret = crypto_blkcipher_decrypt(&desc, &sg, &sg, blksize);
+			if(unlikely(ret)) {
+				printk(KERN_WARNING "crypto_blkcipher_encrypt/decrypt\n");
+				goto out;
+			}
+		}
+
+		if(unlikely(ret)) {
+			printk(KERN_WARNING "CryptoApi failure: %d\n", ret);
+			goto out;
+		}
 	}
 
 	switch(c_op) {

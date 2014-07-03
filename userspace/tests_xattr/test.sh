@@ -75,4 +75,13 @@ check_ret 7a
 sync
 ./test7b
 check_ret 7b
-#check_ret
+
+# Test 8
+# Test wielowatkowego pisania i czytania
+echo 3 | tee /proc/sys/vm/drop_caches
+./test6b & ./test6c & ./test6b & ./test6c & ./test6d & \
+./test6b & ./test6c & ./test6b & ./test6c & ./test6d & \
+./test6b & ./test6c & ./test6b & ./test6c & ./test6d
+check_ret 8
+
+

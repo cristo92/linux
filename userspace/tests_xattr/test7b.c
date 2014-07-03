@@ -23,9 +23,10 @@ int main() {
 		assert(err == 16);
 		buf[err]= '\n';
 		//printf("read errno %d %s", errno, strerror(errno));
-		//err2 = write(1, buf, err + 1);
-		//if(err2 == -1) printf("write errno %d %s", errno, strerror(errno));
-		//assert(err2 == err + 1);
+		if(i % 250 == 0)
+		err2 = write(1, buf, err + 1);
+		if(err2 == -1) printf("write errno %d %s", errno, strerror(errno));
+		assert(err2 == err + 1);
 	}
 	close(fd);
 	assert(fd >= 0);

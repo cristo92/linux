@@ -420,7 +420,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 	/* Zad3 Encrypt */
 	if(IS_ENCRYPTED(inode)) {
 		if(!PageOwnerPriv1(page)) {
-			printk(KERN_WARNING "Encrypt page: %s\n", page_address(page));
+//			printk(KERN_WARNING "Encrypt page: %s\n", page_address(page));
 			filecrypt_encrypt(page);
 		}
 	}

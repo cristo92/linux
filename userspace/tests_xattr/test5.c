@@ -16,8 +16,7 @@ int main() {
 	int ret = syscall(351, key1.key_id);
 	assert(ret == 0);
 	int fd = open("/root/file3", O_WRONLY);
-	if(fd < 0) printf("FAIL: open\n");
-	printf("errno %d %s\n", errno, strerror(errno));
+	if(fd < 0) printf("FAIL: open %d %s\n", errno, strerror(errno));
 	close(fd);
 	assert(fd >= 0);
 
